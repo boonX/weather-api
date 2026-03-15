@@ -2,6 +2,7 @@ package io.github.boonx.weather_api.client;
 
 import java.io.IOException;
 
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.http.HttpRequest;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.client.ClientHttpResponse;
@@ -17,6 +18,7 @@ public class VisualCrossingWeatherApiClient {
   private final RestClient restClient;
   private final String apiKey;
 
+  @Cacheable(value = "weather", key = "#location")
   public VisualCrossingWeatherResponse getWeather(String location) {
     return restClient.get()
         .uri(uriBuilder -> uriBuilder
