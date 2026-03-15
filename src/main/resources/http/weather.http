@@ -1,0 +1,10 @@
+### GET current weather - malmö
+
+GET http://localhost:8080/api/weather/malmo/current HTTP/1.1
+Content-Type: application/json
+
+
+### GET current weather - error
+
+GET http://localhost:8080/api/weather/dhawjhdakwjhd/current HTTP/1.1
+Content-Type: application/json

@@ -1,0 +1,10 @@
+spring:
+  application:
+    name: weather-api
+  profiles:
+    active: local
+
+services:
+  visual-crossing:
+    weather-api.url: https://weather.visualcrossing.com/VisualCrossingWebServices/rest/services/timeline
+    api-key: ${VISUAL_CROSSING_API_KEY}
