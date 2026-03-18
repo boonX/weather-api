@@ -8,3 +8,23 @@ Content-Type: application/json
 
 GET http://localhost:8080/api/weather/dhawjhdakwjhd/current HTTP/1.1
 Content-Type: application/json
+
+
+### POST login user
+
+# @name login
+
+POST http://localhost:8080/api/user/login HTTP/1.1
+Content-Type: application/json
+
+{
+  "email": "something@email.com",
+  "password": "verysecurepassword"
+}
+
+
+### GET subscribed locations
+
+GET http://localhost:8080/api/weather/locations/me HTTP/1.1
+Content-Type: application/json
+Authorization: Bearer {{login.response.body.token}}

@@ -7,6 +7,23 @@ spring:
     redis:
       host: localhost
       port: 6379
+  datasource:
+    url: jdbc:postgresql://localhost:5432/weather-api
+    username: postgres
+    password: postgres
+    driver-class-name: org.postgresql.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+
+  sql:
+    init:
+      mode: always
 
 services:
   visual-crossing:
@@ -14,3 +31,4 @@ services:
     api-key: ${VISUAL_CROSSING_API_KEY}
 
 api.weather.rate-limit: 5
+auth.jwt.secret-key: ${JWT_SECRET_KEY}
