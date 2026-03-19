@@ -6,6 +6,7 @@ import java.util.UUID;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -34,8 +35,19 @@ public class WeatherController {
     return ResponseEntity.status(HttpStatus.CREATED).build();
   }
 
+  @DeleteMapping("/{location}/subscribe")
+  public ResponseEntity<Void> deleteSubscription(@PathVariable String location, Authentication authentication) {
+    weatherService.deleteSubscription(UUID.fromString(authentication.getName()), location);
+    return ResponseEntity.status(HttpStatus.NO_CONTENT).build();
+  }
+
   @GetMapping("/locations/me")
   public ResponseEntity<List<String>> getSubscribedLocations(Authentication authentication) {
     return ResponseEntity.ok(weatherService.getSubscribedLocations(UUID.fromString(authentication.getName())));
+  }
+
+  @GetMapping("/locations/current")
+  public ResponseEntity<List<WeatherResponse>> getSubscribedCurrentWeather(Authentication authentication) {
+    return ResponseEntity.ok(weatherService.getSubscribedCurrentWeather(UUID.fromString(authentication.getName())));
   }
 }

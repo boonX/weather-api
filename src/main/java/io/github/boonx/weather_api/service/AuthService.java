@@ -10,6 +10,7 @@ import io.github.boonx.weather_api.dto.RegisterRequest;
 import io.github.boonx.weather_api.entity.User;
 import io.github.boonx.weather_api.exception.HttpStatusException;
 import io.github.boonx.weather_api.repository.UserRepository;
+import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 
 @Service
@@ -20,6 +21,7 @@ public class AuthService {
   private final PasswordEncoder passwordEncoder;
   private final JwtService jwtService;
 
+  @Transactional
   public LoginResponse register(RegisterRequest request) {
     if (userRepository.existsByEmail(request.email())) {
       throw new HttpStatusException("Email already registered", HttpStatus.BAD_REQUEST);

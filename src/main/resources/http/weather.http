@@ -23,8 +23,29 @@ Content-Type: application/json
 }
 
 
+### POST subscribe location - malmö
+
+POST http://localhost:8080/api/weather/stockholm/subscribe HTTP/1.1
+Content-Type: application/json
+Authorization: Bearer {{login.response.body.token}}
+
+
+### DELETE remove subscription
+
+DELETE http://localhost:8080/api/weather/lund/subscribe HTTP/1.1
+Content-Type: application/json
+Authorization: Bearer {{login.response.body.token}}
+
+
 ### GET subscribed locations
 
 GET http://localhost:8080/api/weather/locations/me HTTP/1.1
+Content-Type: application/json
+Authorization: Bearer {{login.response.body.token}}
+
+
+### GET subscribed locations current weather
+
+GET http://localhost:8080/api/weather/locations/current HTTP/1.1
 Content-Type: application/json
 Authorization: Bearer {{login.response.body.token}}
