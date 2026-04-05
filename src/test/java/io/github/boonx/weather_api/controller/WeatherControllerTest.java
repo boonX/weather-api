@@ -11,11 +11,10 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import java.util.List;
 import java.util.UUID;
 
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.data.redis.connection.RedisConnectionFactory;
 import org.springframework.http.HttpHeaders;
 import org.springframework.test.context.ActiveProfiles;
@@ -23,7 +22,6 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 import io.github.boonx.weather_api.dto.WeatherResponse;
-import io.github.boonx.weather_api.service.JwtService;
 import io.github.boonx.weather_api.service.WeatherService;
 
 @SpringBootTest
@@ -38,19 +36,13 @@ class WeatherControllerTest {
   private WeatherService weatherService;
 
   @MockitoBean
-  private JwtService jwtService;
-
-  @MockitoBean
   private RedisConnectionFactory redisConnectionFactory;
 
   private static final UUID USER_ID = UUID.fromString("00000000-0000-0000-0000-000000000001");
-  private static final String TEST_TOKEN = "test-token";
 
-  @BeforeEach
-  void setUp() {
-    when(jwtService.isValid(TEST_TOKEN)).thenReturn(true);
-    when(jwtService.extractUserId(TEST_TOKEN)).thenReturn(USER_ID.toString());
-  }
+  // JWT for USER_ID, signed with auth.jwt.secret-key from application-test.yml,
+  // expires 2076
+  private static final String TEST_TOKEN = "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIwMDAwMDAwMC0wMDAwLTAwMDAtMDAwMC0wMDAwMDAwMDAwMDEiLCJpYXQiOjE3NzUzNzcxNDQsImV4cCI6MzM1MjE3NzE0NH0.9gscARdHojJ6xuMjm7RjPWrjiSefT6QlSCyJkablJL8";
 
   @Test
   void getCurrentWeather_returnsWeatherResponse() throws Exception {
