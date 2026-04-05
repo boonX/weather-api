@@ -146,9 +146,9 @@ class WeatherControllerTest {
     }
 
     @Test
-    void withoutToken_returns403() throws Exception {
+    void withoutToken_returns401() throws Exception {
       mockMvc.perform(post("/api/weather/London/subscribe"))
-          .andExpect(status().isForbidden());
+          .andExpect(status().isUnauthorized());
     }
   }
 
@@ -195,9 +195,9 @@ class WeatherControllerTest {
     }
 
     @Test
-    void withoutToken_returns403() throws Exception {
+    void withoutToken_returns401() throws Exception {
       mockMvc.perform(delete("/api/weather/London/subscribe"))
-          .andExpect(status().isForbidden());
+          .andExpect(status().isUnauthorized());
     }
   }
 
@@ -233,9 +233,9 @@ class WeatherControllerTest {
     }
 
     @Test
-    void withoutToken_returns403() throws Exception {
+    void withoutToken_returns401() throws Exception {
       mockMvc.perform(get("/api/weather/locations/me"))
-          .andExpect(status().isForbidden());
+          .andExpect(status().isUnauthorized());
     }
   }
 
@@ -296,9 +296,9 @@ class WeatherControllerTest {
     }
 
     @Test
-    void withoutToken_returns403() throws Exception {
+    void withoutToken_returns401() throws Exception {
       mockMvc.perform(get("/api/weather/locations/current"))
-          .andExpect(status().isForbidden());
+          .andExpect(status().isUnauthorized());
     }
   }
 }
