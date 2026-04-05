@@ -10,12 +10,14 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import java.util.UUID;
 
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.data.redis.connection.RedisConnectionFactory;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.context.jdbc.Sql;
@@ -27,6 +29,7 @@ import io.github.boonx.weather_api.dto.VisualCrossingWeatherResponse.CurrentCond
 import io.github.boonx.weather_api.entity.Location;
 import io.github.boonx.weather_api.entity.Subscription;
 import io.github.boonx.weather_api.entity.User;
+import io.github.boonx.weather_api.exception.HttpStatusException;
 import io.github.boonx.weather_api.repository.LocationRepository;
 import io.github.boonx.weather_api.repository.SubscriptionRepository;
 import io.github.boonx.weather_api.repository.UserRepository;
@@ -37,100 +40,265 @@ import io.github.boonx.weather_api.repository.UserRepository;
 @Sql(scripts = "/test-setup.sql", executionPhase = Sql.ExecutionPhase.BEFORE_TEST_METHOD)
 class WeatherControllerTest {
 
-  @Autowired private MockMvc mockMvc;
-  @Autowired private UserRepository userRepository;
-  @Autowired private LocationRepository locationRepository;
-  @Autowired private SubscriptionRepository subscriptionRepository;
+  @Autowired
+  private UserRepository userRepository;
+  @Autowired
+  private LocationRepository locationRepository;
+  @Autowired
+  private SubscriptionRepository subscriptionRepository;
 
-  @MockitoBean private VisualCrossingWeatherApiClient visualCrossingWeatherApiClient;
-  @MockitoBean private RedisConnectionFactory redisConnectionFactory;
+  @MockitoBean
+  private VisualCrossingWeatherApiClient visualCrossingWeatherApiClient;
+  @MockitoBean
+  private RedisConnectionFactory redisConnectionFactory;
+
+  @Autowired
+  private MockMvc mockMvc;
 
   private static final UUID USER_ID = UUID.fromString("00000000-0000-0000-0000-000000000001");
 
-  // JWT for USER_ID, signed with auth.jwt.secret-key from application-test.yml, expires 2076
+  // JWT for USER_ID, signed with auth.jwt.secret-key from application-test.yml,
+  // expires 2076
   private static final String TEST_TOKEN = "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIwMDAwMDAwMC0wMDAwLTAwMDAtMDAwMC0wMDAwMDAwMDAwMDEiLCJpYXQiOjE3NzUzNzcxNDQsImV4cCI6MzM1MjE3NzE0NH0.9gscARdHojJ6xuMjm7RjPWrjiSefT6QlSCyJkablJL8";
 
-  @Test
-  void getCurrentWeather_returnsWeatherResponse() throws Exception {
-    when(visualCrossingWeatherApiClient.getWeather("London"))
-        .thenReturn(new VisualCrossingWeatherResponse(new CurrentConditions(15.0f, 13.0f)));
+  @Nested
+  class GetCurrentWeather {
 
-    mockMvc.perform(get("/api/weather/London/current"))
-        .andExpect(status().isOk())
-        .andExpect(jsonPath("$.location").value("London"))
-        .andExpect(jsonPath("$.temp").value(15.0))
-        .andExpect(jsonPath("$.feelslike").value(13.0));
+    @Test
+    void returnsWeatherResponse() throws Exception {
+      when(visualCrossingWeatherApiClient.getWeather("London"))
+          .thenReturn(new VisualCrossingWeatherResponse(new CurrentConditions(15.0f, 13.0f)));
+
+      mockMvc.perform(get("/api/weather/London/current"))
+          .andExpect(status().isOk())
+          .andExpect(jsonPath("$.location").value("London"))
+          .andExpect(jsonPath("$.temp").value(15.0))
+          .andExpect(jsonPath("$.feelslike").value(13.0));
+    }
+
+    @Test
+    void whenApiReturns404_returns404() throws Exception {
+      when(visualCrossingWeatherApiClient.getWeather("London"))
+          .thenThrow(new HttpStatusException("Location not found", HttpStatus.NOT_FOUND));
+
+      mockMvc.perform(get("/api/weather/London/current"))
+          .andExpect(status().isNotFound());
+    }
   }
 
-  @Test
-  void subscribeToLocation_returnsCreated() throws Exception {
-    when(visualCrossingWeatherApiClient.getWeather("London"))
-        .thenReturn(new VisualCrossingWeatherResponse(new CurrentConditions(15.0f, 13.0f)));
+  @Nested
+  class SubscribeToLocation {
 
-    mockMvc.perform(post("/api/weather/London/subscribe")
-        .header(HttpHeaders.AUTHORIZATION, "Bearer " + TEST_TOKEN))
-        .andExpect(status().isCreated());
+    @Test
+    void returnsCreated() throws Exception {
+      when(visualCrossingWeatherApiClient.getWeather("London"))
+          .thenReturn(new VisualCrossingWeatherResponse(new CurrentConditions(15.0f, 13.0f)));
 
-    assertThat(subscriptionRepository.count()).isEqualTo(1);
+      mockMvc.perform(post("/api/weather/London/subscribe")
+          .header(HttpHeaders.AUTHORIZATION, "Bearer " + TEST_TOKEN))
+          .andExpect(status().isCreated());
+
+      assertThat(subscriptionRepository.count()).isEqualTo(1);
+    }
+
+    @Test
+    void whenApiReturns404_returns404() throws Exception {
+      when(visualCrossingWeatherApiClient.getWeather("London"))
+          .thenThrow(new HttpStatusException("Location not found", HttpStatus.NOT_FOUND));
+
+      mockMvc.perform(post("/api/weather/London/subscribe")
+          .header(HttpHeaders.AUTHORIZATION, "Bearer " + TEST_TOKEN))
+          .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void whenUserNotFound_returns400() throws Exception {
+      when(visualCrossingWeatherApiClient.getWeather("London"))
+          .thenReturn(new VisualCrossingWeatherResponse(new CurrentConditions(15.0f, 13.0f)));
+
+      userRepository.deleteAll();
+
+      mockMvc.perform(post("/api/weather/London/subscribe")
+          .header(HttpHeaders.AUTHORIZATION, "Bearer " + TEST_TOKEN))
+          .andExpect(status().isBadRequest())
+          .andExpect(jsonPath("$.detail").value("User not found"));
+    }
+
+    @Test
+    void whenAlreadySubscribed_returns400() throws Exception {
+      when(visualCrossingWeatherApiClient.getWeather("London"))
+          .thenReturn(new VisualCrossingWeatherResponse(new CurrentConditions(15.0f, 13.0f)));
+
+      Location location = new Location();
+      location.setName("London");
+      locationRepository.save(location);
+
+      User user = userRepository.findById(USER_ID).orElseThrow();
+      Subscription subscription = new Subscription();
+      subscription.setUser(user);
+      subscription.setLocation(location);
+      subscriptionRepository.save(subscription);
+
+      mockMvc.perform(post("/api/weather/London/subscribe")
+          .header(HttpHeaders.AUTHORIZATION, "Bearer " + TEST_TOKEN))
+          .andExpect(status().isBadRequest())
+          .andExpect(jsonPath("$.detail").value("User is already subscribed to location"));
+    }
+
+    @Test
+    void withoutToken_returns403() throws Exception {
+      mockMvc.perform(post("/api/weather/London/subscribe"))
+          .andExpect(status().isForbidden());
+    }
   }
 
-  @Test
-  void deleteSubscription_returnsNoContent() throws Exception {
-    Location location = new Location();
-    location.setName("London");
-    locationRepository.save(location);
+  @Nested
+  class DeleteSubscription {
 
-    User user = userRepository.findById(USER_ID).orElseThrow();
-    Subscription subscription = new Subscription();
-    subscription.setUser(user);
-    subscription.setLocation(location);
-    subscriptionRepository.save(subscription);
+    @Test
+    void returnsNoContent() throws Exception {
+      Location location = new Location();
+      location.setName("London");
+      locationRepository.save(location);
 
-    mockMvc.perform(delete("/api/weather/London/subscribe")
-        .header(HttpHeaders.AUTHORIZATION, "Bearer " + TEST_TOKEN))
-        .andExpect(status().isNoContent());
+      User user = userRepository.findById(USER_ID).orElseThrow();
+      Subscription subscription = new Subscription();
+      subscription.setUser(user);
+      subscription.setLocation(location);
+      subscriptionRepository.save(subscription);
 
-    assertThat(subscriptionRepository.count()).isEqualTo(0);
+      mockMvc.perform(delete("/api/weather/London/subscribe")
+          .header(HttpHeaders.AUTHORIZATION, "Bearer " + TEST_TOKEN))
+          .andExpect(status().isNoContent());
+
+      assertThat(subscriptionRepository.count()).isEqualTo(0);
+    }
+
+    @Test
+    void whenLocationNotFound_returns400() throws Exception {
+      mockMvc.perform(delete("/api/weather/London/subscribe")
+          .header(HttpHeaders.AUTHORIZATION, "Bearer " + TEST_TOKEN))
+          .andExpect(status().isBadRequest())
+          .andExpect(jsonPath("$.detail").value("Location not found"));
+    }
+
+    @Test
+    void whenSubscriptionNotFound_returns400() throws Exception {
+      Location location = new Location();
+      location.setName("London");
+      locationRepository.save(location);
+
+      mockMvc.perform(delete("/api/weather/London/subscribe")
+          .header(HttpHeaders.AUTHORIZATION, "Bearer " + TEST_TOKEN))
+          .andExpect(status().isBadRequest())
+          .andExpect(jsonPath("$.detail").value("Subscription not found"));
+    }
+
+    @Test
+    void withoutToken_returns403() throws Exception {
+      mockMvc.perform(delete("/api/weather/London/subscribe"))
+          .andExpect(status().isForbidden());
+    }
   }
 
-  @Test
-  void getSubscribedLocations_returnsLocationNames() throws Exception {
-    Location location = new Location();
-    location.setName("London");
-    locationRepository.save(location);
+  @Nested
+  class GetSubscribedLocations {
 
-    User user = userRepository.findById(USER_ID).orElseThrow();
-    Subscription subscription = new Subscription();
-    subscription.setUser(user);
-    subscription.setLocation(location);
-    subscriptionRepository.save(subscription);
+    @Test
+    void returnsLocationNames() throws Exception {
+      Location location = new Location();
+      location.setName("London");
+      locationRepository.save(location);
 
-    mockMvc.perform(get("/api/weather/locations/me")
-        .header(HttpHeaders.AUTHORIZATION, "Bearer " + TEST_TOKEN))
-        .andExpect(status().isOk())
-        .andExpect(jsonPath("$[0]").value("London"));
+      User user = userRepository.findById(USER_ID).orElseThrow();
+      Subscription subscription = new Subscription();
+      subscription.setUser(user);
+      subscription.setLocation(location);
+      subscriptionRepository.save(subscription);
+
+      mockMvc.perform(get("/api/weather/locations/me")
+          .header(HttpHeaders.AUTHORIZATION, "Bearer " + TEST_TOKEN))
+          .andExpect(status().isOk())
+          .andExpect(jsonPath("$[0]").value("London"));
+    }
+
+    @Test
+    void whenUserNotFound_returns400() throws Exception {
+      userRepository.deleteAll();
+
+      mockMvc.perform(get("/api/weather/locations/me")
+          .header(HttpHeaders.AUTHORIZATION, "Bearer " + TEST_TOKEN))
+          .andExpect(status().isBadRequest())
+          .andExpect(jsonPath("$.detail").value("User not found"));
+    }
+
+    @Test
+    void withoutToken_returns403() throws Exception {
+      mockMvc.perform(get("/api/weather/locations/me"))
+          .andExpect(status().isForbidden());
+    }
   }
 
-  @Test
-  void getSubscribedCurrentWeather_returnsWeatherResponses() throws Exception {
-    Location location = new Location();
-    location.setName("London");
-    locationRepository.save(location);
+  @Nested
+  class GetSubscribedCurrentWeather {
 
-    User user = userRepository.findById(USER_ID).orElseThrow();
-    Subscription subscription = new Subscription();
-    subscription.setUser(user);
-    subscription.setLocation(location);
-    subscriptionRepository.save(subscription);
+    @Test
+    void returnsWeatherResponses() throws Exception {
+      Location location = new Location();
+      location.setName("London");
+      locationRepository.save(location);
 
-    when(visualCrossingWeatherApiClient.getWeather("London"))
-        .thenReturn(new VisualCrossingWeatherResponse(new CurrentConditions(15.0f, 13.0f)));
+      User user = userRepository.findById(USER_ID).orElseThrow();
+      Subscription subscription = new Subscription();
+      subscription.setUser(user);
+      subscription.setLocation(location);
+      subscriptionRepository.save(subscription);
 
-    mockMvc.perform(get("/api/weather/locations/current")
-        .header(HttpHeaders.AUTHORIZATION, "Bearer " + TEST_TOKEN))
-        .andExpect(status().isOk())
-        .andExpect(jsonPath("$[0].location").value("London"))
-        .andExpect(jsonPath("$[0].temp").value(15.0))
-        .andExpect(jsonPath("$[0].feelslike").value(13.0));
+      when(visualCrossingWeatherApiClient.getWeather("London"))
+          .thenReturn(new VisualCrossingWeatherResponse(new CurrentConditions(15.0f, 13.0f)));
+
+      mockMvc.perform(get("/api/weather/locations/current")
+          .header(HttpHeaders.AUTHORIZATION, "Bearer " + TEST_TOKEN))
+          .andExpect(status().isOk())
+          .andExpect(jsonPath("$[0].location").value("London"))
+          .andExpect(jsonPath("$[0].temp").value(15.0))
+          .andExpect(jsonPath("$[0].feelslike").value(13.0));
+    }
+
+    @Test
+    void whenUserNotFound_returns400() throws Exception {
+      userRepository.deleteAll();
+
+      mockMvc.perform(get("/api/weather/locations/current")
+          .header(HttpHeaders.AUTHORIZATION, "Bearer " + TEST_TOKEN))
+          .andExpect(status().isBadRequest())
+          .andExpect(jsonPath("$.detail").value("User not found"));
+    }
+
+    @Test
+    void whenApiReturns404_returns404() throws Exception {
+      Location location = new Location();
+      location.setName("London");
+      locationRepository.save(location);
+
+      User user = userRepository.findById(USER_ID).orElseThrow();
+      Subscription subscription = new Subscription();
+      subscription.setUser(user);
+      subscription.setLocation(location);
+      subscriptionRepository.save(subscription);
+
+      when(visualCrossingWeatherApiClient.getWeather("London"))
+          .thenThrow(new HttpStatusException("Location not found", HttpStatus.NOT_FOUND));
+
+      mockMvc.perform(get("/api/weather/locations/current")
+          .header(HttpHeaders.AUTHORIZATION, "Bearer " + TEST_TOKEN))
+          .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void withoutToken_returns403() throws Exception {
+      mockMvc.perform(get("/api/weather/locations/current"))
+          .andExpect(status().isForbidden());
+    }
   }
 }
