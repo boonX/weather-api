@@ -15,9 +15,9 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
-import org.springframework.data.redis.connection.RedisConnectionFactory;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.context.jdbc.Sql;
@@ -50,7 +50,7 @@ class WeatherControllerTest {
   @MockitoBean
   private VisualCrossingWeatherApiClient visualCrossingWeatherApiClient;
   @MockitoBean
-  private RedisConnectionFactory redisConnectionFactory;
+  private JavaMailSender mailSender;
 
   @Autowired
   private MockMvc mockMvc;
