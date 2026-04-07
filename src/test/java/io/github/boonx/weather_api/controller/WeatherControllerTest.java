@@ -66,7 +66,7 @@ class WeatherControllerTest {
 
     @Test
     void returnsWeatherResponse() throws Exception {
-      when(visualCrossingWeatherApiClient.getWeather("London"))
+      when(visualCrossingWeatherApiClient.getCurrentWeather("London"))
           .thenReturn(new VisualCrossingWeatherResponse(new CurrentConditions(15.0f, 13.0f)));
 
       mockMvc.perform(get("/api/weather/London/current"))
@@ -78,7 +78,7 @@ class WeatherControllerTest {
 
     @Test
     void whenApiReturns404_returns404() throws Exception {
-      when(visualCrossingWeatherApiClient.getWeather("London"))
+      when(visualCrossingWeatherApiClient.getCurrentWeather("London"))
           .thenThrow(new HttpStatusException("Location not found", HttpStatus.NOT_FOUND));
 
       mockMvc.perform(get("/api/weather/London/current"))
@@ -91,7 +91,7 @@ class WeatherControllerTest {
 
     @Test
     void returnsCreated() throws Exception {
-      when(visualCrossingWeatherApiClient.getWeather("London"))
+      when(visualCrossingWeatherApiClient.getCurrentWeather("London"))
           .thenReturn(new VisualCrossingWeatherResponse(new CurrentConditions(15.0f, 13.0f)));
 
       mockMvc.perform(post("/api/weather/London/subscribe")
@@ -103,7 +103,7 @@ class WeatherControllerTest {
 
     @Test
     void whenApiReturns404_returns404() throws Exception {
-      when(visualCrossingWeatherApiClient.getWeather("London"))
+      when(visualCrossingWeatherApiClient.getCurrentWeather("London"))
           .thenThrow(new HttpStatusException("Location not found", HttpStatus.NOT_FOUND));
 
       mockMvc.perform(post("/api/weather/London/subscribe")
@@ -113,7 +113,7 @@ class WeatherControllerTest {
 
     @Test
     void whenUserNotFound_returns400() throws Exception {
-      when(visualCrossingWeatherApiClient.getWeather("London"))
+      when(visualCrossingWeatherApiClient.getCurrentWeather("London"))
           .thenReturn(new VisualCrossingWeatherResponse(new CurrentConditions(15.0f, 13.0f)));
 
       userRepository.deleteAll();
@@ -126,7 +126,7 @@ class WeatherControllerTest {
 
     @Test
     void whenAlreadySubscribed_returns400() throws Exception {
-      when(visualCrossingWeatherApiClient.getWeather("London"))
+      when(visualCrossingWeatherApiClient.getCurrentWeather("London"))
           .thenReturn(new VisualCrossingWeatherResponse(new CurrentConditions(15.0f, 13.0f)));
 
       Location location = new Location();
@@ -254,7 +254,7 @@ class WeatherControllerTest {
       subscription.setLocation(location);
       subscriptionRepository.save(subscription);
 
-      when(visualCrossingWeatherApiClient.getWeather("London"))
+      when(visualCrossingWeatherApiClient.getCurrentWeather("London"))
           .thenReturn(new VisualCrossingWeatherResponse(new CurrentConditions(15.0f, 13.0f)));
 
       mockMvc.perform(get("/api/weather/locations/current")
@@ -287,7 +287,7 @@ class WeatherControllerTest {
       subscription.setLocation(location);
       subscriptionRepository.save(subscription);
 
-      when(visualCrossingWeatherApiClient.getWeather("London"))
+      when(visualCrossingWeatherApiClient.getCurrentWeather("London"))
           .thenThrow(new HttpStatusException("Location not found", HttpStatus.NOT_FOUND));
 
       mockMvc.perform(get("/api/weather/locations/current")

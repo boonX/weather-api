@@ -28,7 +28,7 @@ public class WeatherService {
   private final SubscriptionRepository subscriptionRepository;
 
   public WeatherResponse getCurrentWeather(String location) {
-    return WeatherResponse.from(location, visualCrossingWeatherApiClient.getWeather(location));
+    return WeatherResponse.from(location, visualCrossingWeatherApiClient.getCurrentWeather(location));
   }
 
   public List<WeatherResponse> getSubscribedCurrentWeather(UUID userId) {

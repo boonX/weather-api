@@ -1,7 +1,9 @@
 package io.github.boonx.weather_api.service;
 
+import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
+import java.time.temporal.TemporalAdjusters;
 import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
@@ -12,7 +14,9 @@ import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
-import io.github.boonx.weather_api.dto.WeatherResponse;
+import io.github.boonx.weather_api.client.VisualCrossingWeatherApiClient;
+import io.github.boonx.weather_api.dto.VisualCrossingWeatherTimelineResponse;
+import io.github.boonx.weather_api.dto.VisualCrossingWeatherTimelineResponse.Weather;
 import io.github.boonx.weather_api.entity.Subscription;
 import io.github.boonx.weather_api.entity.User;
 import io.github.boonx.weather_api.repository.UserRepository;
@@ -23,17 +27,17 @@ import lombok.extern.slf4j.Slf4j;
 public class WeatherEmailService {
 
   private final UserRepository userRepository;
-  private final WeatherService weatherService;
+  private final VisualCrossingWeatherApiClient visualCrossingWeatherApiClient;
   private final JavaMailSender mailSender;
   private final String from;
 
   public WeatherEmailService(
       UserRepository userRepository,
-      WeatherService weatherService,
+      VisualCrossingWeatherApiClient visualCrossingWeatherApiClient,
       JavaMailSender mailSender,
       @Value("${mail.weather-digest.from}") String from) {
     this.userRepository = userRepository;
-    this.weatherService = weatherService;
+    this.visualCrossingWeatherApiClient = visualCrossingWeatherApiClient;
     this.mailSender = mailSender;
     this.from = from;
   }
@@ -47,51 +51,60 @@ public class WeatherEmailService {
   }
 
   private void sendDigestToUser(User user) {
-    List<WeatherResponse> weatherResponses = getWeatherResponses(user);
+    LocalDate monday = LocalDate.now().with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY));
+    LocalDate sunday = LocalDate.now().with(TemporalAdjusters.nextOrSame(DayOfWeek.SUNDAY));
+    List<VisualCrossingWeatherTimelineResponse> weatherResponses = getWeatherResponses(user, monday, sunday);
     if (weatherResponses.isEmpty()) {
       log.warn("Skipping email for '{}' — no weather data could be fetched", user.getEmail());
       return;
     }
 
-    String dateStr = LocalDate.now()
-        .format(DateTimeFormatter.ofPattern("EEEE, d MMMM yyyy", Locale.ENGLISH));
-
-    StringBuilder body = new StringBuilder("Your weather digest for ")
-        .append(dateStr).append(":\n\n");
-
-    weatherResponses.forEach(weatherResponse -> {
-      body.append(weatherResponse.location())
-          .append(": ").append(weatherResponse.temp())
-          .append("°C, feels like ")
-          .append(weatherResponse.feelslike())
-          .append("°C\n");
-    });
+    DateTimeFormatter dayMonth = DateTimeFormatter.ofPattern("d MMMM", Locale.ENGLISH);
+    String weekStr = monday.format(dayMonth) + " – " + sunday.format(dayMonth) + " " + sunday.getYear();
+    String body = buildBody(weatherResponses, weekStr);
 
     try {
       SimpleMailMessage message = new SimpleMailMessage();
       message.setFrom(from);
       message.setTo(user.getEmail());
-      message.setSubject("Weather digest for " + dateStr);
-      message.setText(body.toString());
+      message.setSubject("Weather digest for " + weekStr);
+      message.setText(body);
       mailSender.send(message);
     } catch (Exception e) {
       log.error("Failed to send weather digest to '{}': {}", user.getEmail(), e.getMessage());
     }
   }
 
-  private List<WeatherResponse> getWeatherResponses(User user) {
-    List<WeatherResponse> weatherResponses = user.getSubscriptions().stream()
-        .map(subscription -> getCurrentWeather(user, subscription))
+  private String buildBody(List<VisualCrossingWeatherTimelineResponse> weatherResponses, String weekStr) {
+    StringBuilder body = new StringBuilder("Your weather digest for ")
+        .append(weekStr).append(":\n\n");
+
+    for (VisualCrossingWeatherTimelineResponse weatherResponse : weatherResponses) {
+      body.append(weatherResponse.address()).append(":\n");
+      for (Weather dayWeather : weatherResponse.days()) {
+        String weatherReport = dayWeather.toWeatherReport();
+        body.append("  ");
+        body.append(weatherReport);
+        body.append("\n");
+      }
+      body.append("\n");
+    }
+    return body.toString();
+  }
+
+  private List<VisualCrossingWeatherTimelineResponse> getWeatherResponses(User user, LocalDate start, LocalDate end) {
+    return user.getSubscriptions().stream()
+        .map(subscription -> getWeatherTimeline(user, subscription, start, end))
         .filter(Optional::isPresent)
         .map(Optional::get)
         .toList();
-    return weatherResponses;
   }
 
-  private Optional<WeatherResponse> getCurrentWeather(User user, Subscription subscription) {
+  private Optional<VisualCrossingWeatherTimelineResponse> getWeatherTimeline(User user, Subscription subscription,
+      LocalDate start, LocalDate end) {
     String location = subscription.getLocation().getName();
     try {
-      return Optional.of(weatherService.getCurrentWeather(location));
+      return Optional.of(visualCrossingWeatherApiClient.getWeatherTimeline(location, start, end));
     } catch (Exception e) {
       log.warn("Failed to fetch weather for '{}' for user '{}': {}",
           location, user.getEmail(), e.getMessage());
